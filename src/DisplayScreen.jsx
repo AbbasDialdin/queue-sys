@@ -3,15 +3,26 @@ import { supabase } from './supabaseClient';
 
 const DisplayScreen = () => {
   const [isStarted, setIsStarted] = useState(false);
-  const [currentAdIndex, setCurrentAdIndex] = useState(1);
-  const totalAds = 17; // يمكنك تغيير هذا الرقم حسب عدد الفيديوهات الفعلي
+  
+  // ضع روابط الفيديوهات المباشرة من Supabase هنا بالترتيب
+  const adUrls = [
+    "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/1.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MTcwLCJleHAiOjE4MjA5NDQxNzB9.VViaoH929DlwBZYLmHowJNrc8Sl4J8lNEDChlxZqn-ynQLGJXVPJKQxPEx_nnL2urvJgG_6nGZddNh2B4DwMsw",
+    "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/2.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMi5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjQwLCJleHAiOjE4MjA5NDQyNDB9.tRYzLlltPuvumf2vFMLuQuaNxanW48gQgczlDnjo67hefaKGq-4GSEeUm3y1evxV7ul9VTLsNDiAaiyeClXcpA",
+    "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/3.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMy5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjkwLCJleHAiOjE4MjA5NDQyOTB9.gHczMG5DW2Tb-X5ht2j3TrrfpvqNC-iCOeQQLUe_KlDRZRkTTh0EmefpO_cqAGWpBZFIM0uXLRwwsvjvS4snlA",
+    "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/4.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvNC5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MzEwLCJleHAiOjE4MjA5NDQzMTB9.PilIYRw3M0ia1ILVVQPVUdJsuIqJMAXjrDUy_tjEnxayPvFuV7w9qr79E3d9FLAreS9A3h0Jeubw6-b2P0vU7g",
+    
+    // يمكنك إضافة أو حذف أي عدد من الروابط هنا
+  ];
+  
+  const [currentAdIndex, setCurrentAdIndex] = useState(0); // يبدأ من أول رابط في المصفوفة (رقم 0)
   
   const [calledTicket, setCalledTicket] = useState(null);
   const [counters, setCounters] = useState({ 1: '-', 2: '-', 3: '-' });
   const videoRef = useRef(null);
 
   const handleVideoEnd = () => {
-    setCurrentAdIndex((prev) => (prev % totalAds) + 1);
+    // الانتقال للفيديو التالي، والعودة للأول عند انتهاء القائمة
+    setCurrentAdIndex((prev) => (prev + 1) % adUrls.length);
   };
 
   useEffect(() => {
@@ -40,7 +51,7 @@ const DisplayScreen = () => {
           `رقم ${ticketInfo.ticket_number}، ${ticketInfo.name}، تفضل إلى شباك رقم ${ticketInfo.counter_number}`
         );
         utterance.lang = 'ar-SA';
-        utterance.rate = 0.9; // تبطئ الصوت قليلاً ليكون أوضح
+        utterance.rate = 0.9; 
         window.speechSynthesis.speak(utterance);
 
         // إخفاء الإشعار بعد 8 ثوانٍ
@@ -69,10 +80,10 @@ const DisplayScreen = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
-      {/* مشغل الإعلانات */}
+      {/* مشغل الإعلانات السحابية */}
       <video 
         ref={videoRef}
-        src={`/ads/${currentAdIndex}.mp4`} 
+        src={adUrls[currentAdIndex]} 
         autoPlay 
         muted 
         onEnded={handleVideoEnd}
