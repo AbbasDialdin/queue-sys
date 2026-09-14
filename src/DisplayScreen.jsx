@@ -10,7 +10,7 @@ const DisplayScreen = () => {
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/2.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMi5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjQwLCJleHAiOjE4MjA5NDQyNDB9.tRYzLlltPuvumf2vFMLuQuaNxanW48gQgczlDnjo67hefaKGq-4GSEeUm3y1evxV7ul9VTLsNDiAaiyeClXcpA",
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/3.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMy5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjkwLCJleHAiOjE4MjA5NDQyOTB9.gHczMG5DW2Tb-X5ht2j3TrrfpvqNC-iCOeQQLUe_KlDRZRkTTh0EmefpO_cqAGWpBZFIM0uXLRwwsvjvS4snlA",
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/4.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvNC5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MzEwLCJleHAiOjE4MjA5NDQzMTB9.PilIYRw3M0ia1ILVVQPVUdJsuIqJMAXjrDUy_tjEnxayPvFuV7w9qr79E3d9FLAreS9A3h0Jeubw6-b2P0vU7g",
-    
+
     // يمكنك إضافة أو حذف أي عدد من الروابط هنا
   ];
   
@@ -48,7 +48,7 @@ const DisplayScreen = () => {
 
         // نطق الصوت
         const utterance = new SpeechSynthesisUtterance(
-          `رقم ${ticketInfo.ticket_number}، ${ticketInfo.name}، تفضل إلى شباك رقم ${ticketInfo.counter_number}`
+          `رقم ${ticketInfo.ticket_number}، ${ticketInfo.name}، تفضل إلى الموظف رقم ${ticketInfo.counter_number}`
         );
         utterance.lang = 'ar-SA';
         utterance.rate = 0.9; 
@@ -95,7 +95,7 @@ const DisplayScreen = () => {
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-lg transition-all duration-500">
           <div className="bg-white/10 border border-white/20 p-20 rounded-[3rem] shadow-2xl text-center transform scale-110">
             <h2 className="text-5xl font-light text-gray-200 mb-6 tracking-wide">
-              الرجاء التوجه إلى شباك ({calledTicket.counter_number})
+              الرجاء التوجه إلى الموظف ({calledTicket.counter_number})
             </h2>
             <h1 className="text-[12rem] font-bold text-white mb-8 leading-none drop-shadow-xl animate-pulse">
               {calledTicket.ticket_number}
@@ -109,7 +109,7 @@ const DisplayScreen = () => {
       <div className="absolute bottom-0 z-20 w-full h-28 bg-black/60 backdrop-blur-md border-t border-white/10 flex justify-around items-center px-10 shadow-2xl">
         {[1, 2, 3].map((num) => (
           <div key={num} className="flex items-center gap-6 text-4xl font-medium">
-            <span className="text-gray-400">شباك {num}:</span>
+            <span className="text-gray-400">موظف {num}:</span>
             <span className={`px-8 py-3 rounded-2xl transition-colors ${counters[num] !== '-' ? 'bg-white text-black font-bold' : 'bg-white/10 text-gray-500'}`}>
               {counters[num]}
             </span>
