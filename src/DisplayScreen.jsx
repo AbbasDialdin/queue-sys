@@ -40,7 +40,16 @@ const DisplayScreen = () => {
 
   useEffect(() => {
     if (isStarted && videoRef.current) {
-      videoRef.current.play().catch(e => console.log("Play error:", e));
+      // إجبار المشغل الثابت على تحميل الرابط الجديد وتشغيله
+      videoRef.current.src = adUrls[currentAdIndex];
+      videoRef.current.load();
+      
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.log("تم منع التشغيل التلقائي:", error);
+        });
+      }
     }
   }, [currentAdIndex, isStarted]);
 
@@ -124,14 +133,11 @@ const DisplayScreen = () => {
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
       <video 
-        key={adUrls[currentAdIndex]} /* هذا هو السطر السحري الذي يحذف المشغل ويبنيه من جديد */
         ref={videoRef}
-        src={adUrls[currentAdIndex]} 
         autoPlay 
         muted 
         playsInline
         onEnded={handleVideoEnd}
-        onLoadedData={(e) => e.target.play()} /* إجبار التشغيل فوراً عند تحميل البيانات */
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
 
