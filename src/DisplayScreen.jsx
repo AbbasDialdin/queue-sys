@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 const DisplayScreen = () => {
   const [isStarted, setIsStarted] = useState(false);
   
-  // ضع جميع روابط الفيديوهات هنا (تأكد من وضعها كلها)
+  // ضع جميع روابط الفيديوهات هنا
   const adUrls = [
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/1.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MTcwLCJleHAiOjE4MjA5NDQxNzB9.VViaoH929DlwBZYLmHowJNrc8Sl4J8lNEDChlxZqn-ynQLGJXVPJKQxPEx_nnL2urvJgG_6nGZddNh2B4DwMsw",
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/2.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMi5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjQwLCJleHAiOjE4MjA5NDQyNDB9.tRYzLlltPuvumf2vFMLuQuaNxanW48gQgczlDnjo67hefaKGq-4GSEeUm3y1evxV7ul9VTLsNDiAaiyeClXcpA",
@@ -26,51 +26,41 @@ const DisplayScreen = () => {
 
   ];
   
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [activePlayer, setActivePlayer] = useState(1); // من هو المشغل الظاهر حالياً؟ 1 أم 2
+  
   const [calledTicket, setCalledTicket] = useState(null);
   const [counters, setCounters] = useState({ 1: '-', 2: '-', 3: '-' });
   
-  const videoRef = useRef(null);
+  const video1Ref = useRef(null);
+  const video2Ref = useRef(null);
   const timeoutRef = useRef(null);
-  const videoIndexRef = useRef(0); // نستخدم useRef للرقم بدل useState لكي لا نشوش على الأندرويد
 
-  // 1. التحكم المباشر بمشغل الفيديو (السر لنجاح التشغيل على الأندرويد)
+  // حساب رقم الفيديو التالي ليتم تحميله في الخلفية
+  const nextIndex = (currentIndex + 1) % adUrls.length;
+
+  // الاستماع لتغير المشغل النشط وتشغيله فوراً
   useEffect(() => {
-    const video = videoRef.current;
-    if (!isStarted || !video) return;
+    if (!isStarted) return;
+    
+    if (activePlayer === 1 && video1Ref.current) {
+      video1Ref.current.play().catch(e => console.log("Play error v1:", e));
+    } else if (activePlayer === 2 && video2Ref.current) {
+      video2Ref.current.play().catch(e => console.log("Play error v2:", e));
+    }
+  }, [activePlayer, isStarted]);
 
-    const playNextVideo = () => {
-      // إعطاء الشاشة جزء من الثانية لتفريغ الذاكرة
-      setTimeout(() => {
-        videoIndexRef.current = (videoIndexRef.current + 1) % adUrls.length;
-        video.src = adUrls[videoIndexRef.current]; // تغيير الرابط يدوياً
-        video.load(); // إجبار الأندرويد على قراءة الرابط الجديد
-        const playPromise = video.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.catch(e => {
-            console.error("تعذر تشغيل الفيديو، سيتم تخطيه:", e);
-            playNextVideo(); // إذا حدث خطأ، انتقل للفيديو اللي بعده فوراً
-          });
-        }
-      }, 300);
-    };
+  const handleVideo1End = () => {
+    setCurrentIndex(nextIndex);
+    setActivePlayer(2); // إظهار المشغل الثاني
+  };
 
-    // تشغيل أول فيديو عند النقر على الشاشة
-    video.src = adUrls[videoIndexRef.current];
-    video.load();
-    video.play().catch(e => console.log("Initial play error", e));
+  const handleVideo2End = () => {
+    setCurrentIndex(nextIndex);
+    setActivePlayer(1); // إظهار المشغل الأول
+  };
 
-    // الاستماع لانتهاء الفيديو أو حدوث خطأ
-    video.addEventListener('ended', playNextVideo);
-    video.addEventListener('error', playNextVideo);
-
-    return () => {
-      video.removeEventListener('ended', playNextVideo);
-      video.removeEventListener('error', playNextVideo);
-    };
-  }, [isStarted]); // هذا الكود يعمل مرة واحدة فقط عند بدء الشاشة ولا يتأثر بتحديثات الأرقام
-
-  // 2. منع الشاشة من النوم
+  // منع الشاشة من النوم
   useEffect(() => {
     const keepScreenAwake = async () => {
       try {
@@ -84,7 +74,7 @@ const DisplayScreen = () => {
     if (isStarted) keepScreenAwake();
   }, [isStarted]);
 
-  // 3. الاتصال بقاعدة البيانات (Supabase) للنداء
+  // الاتصال بقاعدة البيانات والنداء
   useEffect(() => {
     if (!isStarted) return;
 
@@ -106,11 +96,11 @@ const DisplayScreen = () => {
 
         setCalledTicket(ticketInfo);
 
-        // صوت التنبيه
+        // تشغيل صوت الجرس
         const alertSound = new Audio('/alert.mp3');
         alertSound.play().catch(e => console.log("Sound error:", e));
 
-        // نطق الرقم بعد نصف ثانية
+        // نطق الرقم
         setTimeout(() => {
           const utterance = new SpeechSynthesisUtterance(`رقم ${ticketInfo.ticket_number}`);
           utterance.lang = 'ar-SA';
@@ -118,7 +108,7 @@ const DisplayScreen = () => {
           window.speechSynthesis.speak(utterance);
         }, 500);
 
-        // إخفاء التنبيه بعد 10 ثواني
+        // إخفاء الشاشة بعد 10 ثواني
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
           setCalledTicket(null);
@@ -132,7 +122,6 @@ const DisplayScreen = () => {
     };
   }, [isStarted]);
 
-  // شاشة البدء (ضرورية للحصول على صلاحية تشغيل الصوت والفيديو من المتصفح)
   if (!isStarted) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
@@ -149,20 +138,31 @@ const DisplayScreen = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
-      {/* 
-        لاحظ: قمنا بحذف autoPlay و src من هنا، 
-        لأننا نتحكم بها من خلال الـ useEffect في الأعلى
-      */}
+      {/* المشغل الأول */}
       <video 
-        ref={videoRef}
+        ref={video1Ref}
+        src={activePlayer === 1 ? adUrls[currentIndex] : adUrls[nextIndex]} 
         muted 
         playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
+        preload="auto"
+        onEnded={handleVideo1End}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${activePlayer === 1 ? 'opacity-100 z-0' : 'opacity-0 -z-10'}`}
+      />
+
+      {/* المشغل الثاني (يحمل الفيديو التالي في الخلفية) */}
+      <video 
+        ref={video2Ref}
+        src={activePlayer === 2 ? adUrls[currentIndex] : adUrls[nextIndex]} 
+        muted 
+        playsInline
+        preload="auto"
+        onEnded={handleVideo2End}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${activePlayer === 2 ? 'opacity-100 z-0' : 'opacity-0 -z-10'}`}
       />
 
       {/* التراكب الزجاجي عند النداء */}
       {calledTicket && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-lg transition-all duration-500">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-lg transition-all duration-500">
           <div className="bg-white/10 border border-white/20 p-20 rounded-[3rem] shadow-2xl text-center transform scale-110">
             <h2 className="text-5xl font-light text-gray-200 mb-6 tracking-wide">
               الرجاء التوجه إلى الموظف ({calledTicket.counter_number})
@@ -175,7 +175,7 @@ const DisplayScreen = () => {
       )}
 
       {/* الشريط السفلي */}
-      <div className="absolute bottom-0 z-20 w-full h-28 bg-black/60 backdrop-blur-md border-t border-white/10 flex justify-around items-center px-10 shadow-2xl">
+      <div className="absolute bottom-0 z-30 w-full h-28 bg-black/60 backdrop-blur-md border-t border-white/10 flex justify-around items-center px-10 shadow-2xl">
         {[1, 2, 3].map((num) => (
           <div key={num} className="flex items-center gap-6 text-4xl font-medium">
             <span className="text-gray-400">الموظف {num}:</span>
@@ -190,6 +190,6 @@ const DisplayScreen = () => {
 };
 
 export default DisplayScreen;
-  
+  // ضع جميع روابط الفيديوهات هنا (تأكد من وضعها كلها)
   
   
