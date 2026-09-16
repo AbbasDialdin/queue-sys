@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+
+  import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
 const DisplayScreen = () => {
   const [isStarted, setIsStarted] = useState(false);
   
-  // ضع جميع روابط الفيديوهات هنا
+  // ضع هنا الروابط الـ 17 كاملة مع الشفرات (Tokens) كما تنسخها من Supabase
   const adUrls = [
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/1.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MTcwLCJleHAiOjE4MjA5NDQxNzB9.VViaoH929DlwBZYLmHowJNrc8Sl4J8lNEDChlxZqn-ynQLGJXVPJKQxPEx_nnL2urvJgG_6nGZddNh2B4DwMsw",
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/2.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMi5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjQwLCJleHAiOjE4MjA5NDQyNDB9.tRYzLlltPuvumf2vFMLuQuaNxanW48gQgczlDnjo67hefaKGq-4GSEeUm3y1evxV7ul9VTLsNDiAaiyeClXcpA",
@@ -26,8 +27,6 @@ const DisplayScreen = () => {
 
   ];
   
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [activePlayer, setActivePlayer] = useState(1); // من هو المشغل الظاهر حالياً؟ 1 أم 2
   
   const [calledTicket, setCalledTicket] = useState(null);
   const [counters, setCounters] = useState({ 1: '-', 2: '-', 3: '-' });
@@ -36,29 +35,70 @@ const DisplayScreen = () => {
   const video2Ref = useRef(null);
   const timeoutRef = useRef(null);
 
-  // حساب رقم الفيديو التالي ليتم تحميله في الخلفية
-  const nextIndex = (currentIndex + 1) % adUrls.length;
-
-  // الاستماع لتغير المشغل النشط وتشغيله فوراً
   useEffect(() => {
     if (!isStarted) return;
     
-    if (activePlayer === 1 && video1Ref.current) {
-      video1Ref.current.play().catch(e => console.log("Play error v1:", e));
-    } else if (activePlayer === 2 && video2Ref.current) {
-      video2Ref.current.play().catch(e => console.log("Play error v2:", e));
+    const v1 = video1Ref.current;
+    const v2 = video2Ref.current;
+    if (!v1 || !v2 || adUrls.length === 0) return;
+
+    let activePlayer = 1;
+    let currentIdx = 0;
+
+    // الإعداد الأولي
+    v1.src = adUrls[0];
+    if (adUrls.length > 1) {
+      v2.src = adUrls[1];
+    } else {
+      v2.src = adUrls[0]; // في حال كان هناك فيديو واحد فقط
     }
-  }, [activePlayer, isStarted]);
 
-  const handleVideo1End = () => {
-    setCurrentIndex(nextIndex);
-    setActivePlayer(2); // إظهار المشغل الثاني
-  };
+    v1.style.opacity = 1; v1.style.zIndex = 0;
+    v2.style.opacity = 0; v2.style.zIndex = -10;
 
-  const handleVideo2End = () => {
-    setCurrentIndex(nextIndex);
-    setActivePlayer(1); // إظهار المشغل الأول
-  };
+    v1.play().catch(e => console.log("خطأ في التشغيل المبدئي:", e));
+
+    const handleVideoEnd = () => {
+      if (activePlayer === 1) {
+        activePlayer = 2;
+        v1.style.opacity = 0; v1.style.zIndex = -10;
+        v2.style.opacity = 1; v2.style.zIndex = 0;
+        v2.play().catch(e => console.log("v2 play error:", e));
+
+        currentIdx = (currentIdx + 1) % adUrls.length;
+        const nextNextIdx = (currentIdx + 1) % adUrls.length;
+        v1.src = adUrls[nextNextIdx];
+        v1.load();
+      } else {
+        activePlayer = 1;
+        v2.style.opacity = 0; v2.style.zIndex = -10;
+        v1.style.opacity = 1; v1.style.zIndex = 0;
+        v1.play().catch(e => console.log("v1 play error:", e));
+
+        currentIdx = (currentIdx + 1) % adUrls.length;
+        const nextNextIdx = (currentIdx + 1) % adUrls.length;
+        v2.src = adUrls[nextNextIdx];
+        v2.load();
+      }
+    };
+
+    const handleError = () => {
+      console.log("حدث خطأ في تحميل فيديو، سيتم تخطيه.");
+      handleVideoEnd();
+    };
+
+    v1.addEventListener('ended', handleVideoEnd);
+    v2.addEventListener('ended', handleVideoEnd);
+    v1.addEventListener('error', handleError);
+    v2.addEventListener('error', handleError);
+
+    return () => {
+      v1.removeEventListener('ended', handleVideoEnd);
+      v2.removeEventListener('ended', handleVideoEnd);
+      v1.removeEventListener('error', handleError);
+      v2.removeEventListener('error', handleError);
+    };
+  }, [isStarted]); 
 
   // منع الشاشة من النوم
   useEffect(() => {
@@ -74,7 +114,7 @@ const DisplayScreen = () => {
     if (isStarted) keepScreenAwake();
   }, [isStarted]);
 
-  // الاتصال بقاعدة البيانات والنداء
+  // الاتصال بقاعدة البيانات
   useEffect(() => {
     if (!isStarted) return;
 
@@ -96,11 +136,9 @@ const DisplayScreen = () => {
 
         setCalledTicket(ticketInfo);
 
-        // تشغيل صوت الجرس
         const alertSound = new Audio('/alert.mp3');
         alertSound.play().catch(e => console.log("Sound error:", e));
 
-        // نطق الرقم
         setTimeout(() => {
           const utterance = new SpeechSynthesisUtterance(`رقم ${ticketInfo.ticket_number}`);
           utterance.lang = 'ar-SA';
@@ -108,7 +146,6 @@ const DisplayScreen = () => {
           window.speechSynthesis.speak(utterance);
         }, 500);
 
-        // إخفاء الشاشة بعد 10 ثواني
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
           setCalledTicket(null);
@@ -138,29 +175,20 @@ const DisplayScreen = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
-      {/* المشغل الأول */}
       <video 
         ref={video1Ref}
-        src={activePlayer === 1 ? adUrls[currentIndex] : adUrls[nextIndex]} 
         muted 
         playsInline
-        preload="auto"
-        onEnded={handleVideo1End}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${activePlayer === 1 ? 'opacity-100 z-0' : 'opacity-0 -z-10'}`}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
       />
 
-      {/* المشغل الثاني (يحمل الفيديو التالي في الخلفية) */}
       <video 
         ref={video2Ref}
-        src={activePlayer === 2 ? adUrls[currentIndex] : adUrls[nextIndex]} 
         muted 
         playsInline
-        preload="auto"
-        onEnded={handleVideo2End}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${activePlayer === 2 ? 'opacity-100 z-0' : 'opacity-0 -z-10'}`}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
       />
 
-      {/* التراكب الزجاجي عند النداء */}
       {calledTicket && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-lg transition-all duration-500">
           <div className="bg-white/10 border border-white/20 p-20 rounded-[3rem] shadow-2xl text-center transform scale-110">
@@ -174,7 +202,6 @@ const DisplayScreen = () => {
         </div>
       )}
 
-      {/* الشريط السفلي */}
       <div className="absolute bottom-0 z-30 w-full h-28 bg-black/60 backdrop-blur-md border-t border-white/10 flex justify-around items-center px-10 shadow-2xl">
         {[1, 2, 3].map((num) => (
           <div key={num} className="flex items-center gap-6 text-4xl font-medium">
@@ -190,6 +217,5 @@ const DisplayScreen = () => {
 };
 
 export default DisplayScreen;
-  // ضع جميع روابط الفيديوهات هنا (تأكد من وضعها كلها)
-  
+  // ضع جميع روابط الفيديوهات هنا
   
