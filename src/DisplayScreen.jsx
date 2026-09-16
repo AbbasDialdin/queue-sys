@@ -1,11 +1,9 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
 const DisplayScreen = () => {
   const [isStarted, setIsStarted] = useState(false);
   
-  // روابط الفيديوهات من Supabase
   const adUrls = [
    "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/1.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MTcwLCJleHAiOjE4MjA5NDQxNzB9.VViaoH929DlwBZYLmHowJNrc8Sl4J8lNEDChlxZqn-ynQLGJXVPJKQxPEx_nnL2urvJgG_6nGZddNh2B4DwMsw",
     "https://dygmodlzwgqdblzbvirk.supabase.co/storage/v1/object/sign/ads/2.mp4?token=eyJraWQiOiJiYThiMjg4YS1lOTBlLTRkNjYtYjcyNy01NDcxMGRkNzg5N2YiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJhZHMvMi5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5NDA4MjQwLCJleHAiOjE4MjA5NDQyNDB9.tRYzLlltPuvumf2vFMLuQuaNxanW48gQgczlDnjo67hefaKGq-4GSEeUm3y1evxV7ul9VTLsNDiAaiyeClXcpA",
@@ -35,23 +33,17 @@ const DisplayScreen = () => {
   const timeoutRef = useRef(null);
 
   const handleVideoEnd = () => {
-    setCurrentAdIndex((prev) => (prev + 1) % adUrls.length);
+    // السر هنا: إعطاء الشاشة نصف ثانية لتفريغ ذاكرة الرام قبل تشغيل الفيديو التالي
+    setTimeout(() => {
+      setCurrentAdIndex((prev) => (prev + 1) % adUrls.length);
+    }, 500);
   };
 
-  useEffect(() => {
-    if (isStarted && videoRef.current) {
-      // إجبار المشغل الثابت على تحميل الرابط الجديد وتشغيله
-      videoRef.current.src = adUrls[currentAdIndex];
-      videoRef.current.load();
-      
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.log("تم منع التشغيل التلقائي:", error);
-        });
-      }
-    }
-  }, [currentAdIndex, isStarted]);
+  const handleVideoError = (e) => {
+    console.error("حدث خطأ في تشغيل الفيديو، سيتم الانتقال للتالي", e);
+    // إذا عجزت الشاشة عن قراءة الفيديو لسبب ما، لا تتوقف، بل انتقل للتالي فوراً
+    handleVideoEnd();
+  };
 
   useEffect(() => {
     const keepScreenAwake = async () => {
@@ -89,17 +81,13 @@ const DisplayScreen = () => {
 
         setCalledTicket(ticketInfo);
 
-        // تشغيل صوت الجرس
         const alertSound = new Audio('/alert.mp3');
         alertSound.play().catch(e => console.log("Sound error:", e));
 
-        // نطق الرقم فقط بعد نصف ثانية
         setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(
-            `رقم ${ticketInfo.ticket_number}`
-          );
+          const utterance = new SpeechSynthesisUtterance(`رقم ${ticketInfo.ticket_number}`);
           utterance.lang = 'ar-SA';
-          utterance.rate = 0.8; // تبطيء بسيط ليكون الرقم مسموعاً بوضوح
+          utterance.rate = 0.8; 
           window.speechSynthesis.speak(utterance);
         }, 500);
 
@@ -132,12 +120,15 @@ const DisplayScreen = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
+      {/* مشغل الفيديو المستقر */}
       <video 
         ref={videoRef}
+        src={adUrls[currentAdIndex]} 
         autoPlay 
         muted 
         playsInline
         onEnded={handleVideoEnd}
+        onError={handleVideoError}
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
 
@@ -169,3 +160,4 @@ const DisplayScreen = () => {
 };
 
 export default DisplayScreen;
+  
