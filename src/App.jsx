@@ -1,16 +1,20 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Kiosk from './Kiosk';
-import Employee from './Employee';
+import EmployeeDesk from './EmployeeDesk';
 import DisplayScreen from './DisplayScreen';
 import ProtectedRoute from './ProtectedRoute';
 
 function App() {
   return (
-    <BrowserRouter>
+    // استخدام HashRouter لضمان عمل المسارات على استضافة Hostinger بدون أخطاء 404
+    <HashRouter>
       <Routes>
-        {/* شاشة مدخل الأسماء محمية بكلمة مرور 1234 */}
+        {/* 1. الشاشة الكبيرة هي الواجهة الرئيسية (تفتح بمجرد دخول الدومين) */}
+        <Route path="/" element={<DisplayScreen />} />
+
+        {/* 2. شاشة الكشك (نسخة الويب) محمية بكلمة مرور 1234 */}
         <Route 
-          path="/" 
+          path="/kiosk" 
           element={
             <ProtectedRoute expectedPassword="1234" storageKey="auth_kiosk">
               <Kiosk />
@@ -18,20 +22,17 @@ function App() {
           } 
         />
         
-        {/* شاشة الموظف محمية بكلمة مرور 0000 */}
+        {/* 3. شاشة الموظفين محمية بكلمة مرور 0000 */}
         <Route 
           path="/employee" 
           element={
             <ProtectedRoute expectedPassword="0000" storageKey="auth_employee">
-              <Employee />
+              <EmployeeDesk />
             </ProtectedRoute>
           } 
         />
-        
-        {/* الشاشة الكبيرة تبقى بدون باسورد ليسهل تشغيلها على الشاشات الذكية */}
-        <Route path="/display" element={<DisplayScreen />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

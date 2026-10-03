@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 const DisplayScreen = () => {
   const [isStarted, setIsStarted] = useState(false);
   
-  // 1. مسار الفيديوهات وتوليد الـ 17 رابط تلقائياً
+  // 1. مسار الفيديوهات من هوستنكر وتوليد الـ 17 رابط تلقائياً
   const baseUrl = "https://corva-iq.com/ads"; 
   const adUrls = Array.from({ length: 17 }, (_, i) => `${baseUrl}/${i + 1}.mp4`);
   
@@ -11,12 +11,13 @@ const DisplayScreen = () => {
   const [counters, setCounters] = useState({ 1: '-', 2: '-', 3: '-' });
   
   const video1Ref = useRef(null);
-  const video2Ref = useRef(null); // استخدام مراجع دقيقة
+  const video2Ref = useRef(null);
   const timeoutRef = useRef(null);
   
+  // مرجع لتخزين آخر تذكرة تم نداؤها لمنع تكرار الصوت
   const lastCalledIdRef = useRef(null);
 
-  // 2. نظام الفيديوهات المزدوج المستقر
+  // 2. نظام الفيديوهات المزدوج (Ping-Pong Buffer)
   useEffect(() => {
     if (!isStarted) return;
     const v1 = video1Ref.current;
@@ -26,23 +27,24 @@ const DisplayScreen = () => {
     let activePlayer = 1;
     let currentIdx = 0;
 
-    // الإعداد الأولي للمشغلين
+    // الإعداد الأولي
     v1.src = adUrls[0];
-    v2.src = adUrls.length > 1 ? adUrls[1] : adUrls[0];
-    
-    v1.load();
-    v2.load();
+    if (adUrls.length > 1) {
+      v2.src = adUrls[1];
+    } else {
+      v2.src = adUrls[0]; 
+    }
 
-    v1.style.opacity = 1; v1.style.zIndex = 10;
-    v2.style.opacity = 0; v2.style.zIndex = 0;
+    v1.style.opacity = 1; v1.style.zIndex = 0;
+    v2.style.opacity = 0; v2.style.zIndex = -10;
 
-    v1.play().catch(e => console.log("خطأ في التشغيل المبدئي v1:", e));
+    v1.play().catch(e => console.log("خطأ في التشغيل المبدئي:", e));
 
     const handleVideoEnd = () => {
       if (activePlayer === 1) {
         activePlayer = 2;
-        v1.style.opacity = 0; v1.style.zIndex = 0;
-        v2.style.opacity = 1; v2.style.zIndex = 10;
+        v1.style.opacity = 0; v1.style.zIndex = -10;
+        v2.style.opacity = 1; v2.style.zIndex = 0;
         v2.play().catch(e => console.log("v2 play error:", e));
 
         currentIdx = (currentIdx + 1) % adUrls.length;
@@ -51,8 +53,8 @@ const DisplayScreen = () => {
         v1.load();
       } else {
         activePlayer = 1;
-        v2.style.opacity = 0; v2.style.zIndex = 0;
-        v1.style.opacity = 1; v1.style.zIndex = 10;
+        v2.style.opacity = 0; v2.style.zIndex = -10;
+        v1.style.opacity = 1; v1.style.zIndex = 0;
         v1.play().catch(e => console.log("v1 play error:", e));
 
         currentIdx = (currentIdx + 1) % adUrls.length;
@@ -94,7 +96,7 @@ const DisplayScreen = () => {
     if (isStarted) keepScreenAwake();
   }, [isStarted]);
 
-  // 4. الاتصال اللحظي بـ API هوستنكر (Polling)
+  // 4. الاتصال اللحظي بـ API هوستنكر الخاص بك (Polling)
   useEffect(() => {
     if (!isStarted) return;
 
@@ -103,19 +105,23 @@ const DisplayScreen = () => {
         const response = await fetch('https://queue.corva-iq.com/api/screen.php');
         const data = await response.json();
 
+        // تحديث أرقام الشبابيك في الشريط السفلي
         if (data.counters) {
           setCounters(data.counters);
         }
 
+        // التحقق من وجود نداء جديد للإصدار
         if (data.recent_call && data.recent_call.id !== lastCalledIdRef.current) {
           lastCalledIdRef.current = data.recent_call.id;
           const ticketInfo = data.recent_call;
 
           setCalledTicket(ticketInfo);
 
+          // تشغيل صوت الجرس
           const alertSound = new Audio('/alert.mp3');
           alertSound.play().catch(e => console.log("Sound error:", e));
 
+          // نطق الرقم
           setTimeout(() => {
             const utterance = new SpeechSynthesisUtterance(`رقم ${ticketInfo.ticket_number}`);
             utterance.lang = 'ar-SA';
@@ -123,6 +129,7 @@ const DisplayScreen = () => {
             window.speechSynthesis.speak(utterance);
           }, 500);
 
+          // إخفاء الشاشة الزجاجية بعد 10 ثواني
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           timeoutRef.current = setTimeout(() => {
             setCalledTicket(null);
@@ -133,10 +140,12 @@ const DisplayScreen = () => {
       }
     };
 
+    // الشاشة تسأل السيرفر كل ثانية ونصف
     const interval = setInterval(fetchScreenData, 1500);
     return () => clearInterval(interval);
   }, [isStarted]);
 
+  // شاشة البدء
   if (!isStarted) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
@@ -150,30 +159,27 @@ const DisplayScreen = () => {
     );
   }
 
+  // واجهة العرض الرئيسية
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-white font-sans" dir="rtl">
       
-      {/* المشغل الأول */}
       <video 
         ref={video1Ref}
         muted 
         playsInline
-        preload="auto"
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
       />
 
-      {/* المشغل الثاني */}
       <video 
         ref={video2Ref}
         muted 
         playsInline
-        preload="auto"
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
       />
 
       {/* التراكب الزجاجي عند النداء */}
       {calledTicket && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-md transition-all duration-500">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-lg transition-all duration-500">
           <div className="bg-white/10 border border-white/20 p-20 rounded-[3rem] shadow-2xl text-center transform scale-110">
             <h2 className="text-5xl font-light text-gray-200 mb-6 tracking-wide">
               الرجاء التوجه إلى الموظف ({calledTicket.counter_number})
